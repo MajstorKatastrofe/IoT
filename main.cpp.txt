@@ -1,0 +1,304 @@
+#include <anyrtttl.h>
+#include <binrtttl.h>
+#include <pitches.h>
+
+#define NOTE_AS1 58
+#define NOTE_C6 1047
+
+int buzzer = 14;
+
+#include <ESP8266WebServer.h>
+#include <ESP8266WiFi.h>
+#include <TinyGPS++.h>
+#include <SoftwareSerial.h>
+#include <FS.h>
+#include <LittleFS.h>
+#include <ESP8266Firebase.h>
+
+#include <math.h>
+#include <algorithm>
+
+#define RADIO_TERRESTRE 6372797.56085
+#define GRADOS_RADIANES PI / 180
+
+double razlikaVecaOdRadiusa(double latitud1, double longitud1, double latitud2, double longitud2, double radius)
+{
+  double haversine;
+  double temp;
+  double distancia_puntos;
+
+  latitud1 = latitud1 * GRADOS_RADIANES;
+  longitud1 = longitud1 * GRADOS_RADIANES;
+  latitud2 = latitud2 * GRADOS_RADIANES;
+  longitud2 = longitud2 * GRADOS_RADIANES;
+
+  haversine = (pow(sin((1.0 / 2) * (latitud2 - latitud1)), 2)) + ((cos(latitud1)) * (cos(latitud2)) * (pow(sin((1.0 / 2) * (longitud2 - longitud1)), 2)));
+  temp = 2 * asin(min(1.0, sqrt(haversine)));
+  distancia_puntos = RADIO_TERRESTRE * temp;
+  Serial.println(distancia_puntos);
+  if (distancia_puntos > radius)
+    return true;
+  return false;
+}
+
+// Function to initialize LittleFS
+void initFS()
+{
+  if (!LittleFS.begin())
+  {
+    Serial.println("Failed to mount file system");
+    return;
+  }
+  Serial.println("File system mounted");
+}
+
+double pocetnaTackaLng = 0;
+double pocetnaTackaLat = 0;
+double radius = 1000;
+String name = "";
+String uid = "";
+String ssid = "Redmi 9";
+String pass = "kakodane";
+
+void readConfig()
+{
+  if (LittleFS.exists("/config.txt"))
+  {
+    File configFile = LittleFS.open("/config.txt", "r");
+    if (configFile)
+    {
+      uid = configFile.readStringUntil('\n');
+      name = configFile.readStringUntil('\n');
+      ssid = configFile.readStringUntil('\n');
+      pass = configFile.readStringUntil('\n');
+      uid.trim();
+      name.trim();
+      ssid.trim();
+      pass.trim();
+    }
+  }
+  else
+  {
+    Serial.println("Nema configa!");
+  }
+}
+
+void writeConfig(String uid, String name, String ssid, String pass)
+{
+  File configFile = LittleFS.open("/config.txt", "w");
+  if (configFile)
+  {
+    configFile.println(uid);
+    configFile.println(name);
+    configFile.println(ssid);
+    configFile.println(pass);
+    configFile.close();
+  }
+}
+
+#define REFERENCE_URL "https://iot-projekat-f6349-default-rtdb.europe-west1.firebasedatabase.app/" // Firebase project reference url
+
+Firebase firebase(REFERENCE_URL);
+
+void updateData()
+{
+  String pocLat = firebase.getString(uid + "/" + name + "/pocLat");
+  String pocLng = firebase.getString(uid + "/" + name + "/pocLng");
+  pocetnaTackaLat = pocLat.toDouble();
+  pocetnaTackaLng = pocLng.toDouble();
+  radius = firebase.getString(uid + "/" + name + "/radius").toInt();
+  Serial.println(pocetnaTackaLat, 5);
+  Serial.println(pocetnaTackaLng, 5);
+  Serial.println(radius);
+}
+
+ESP8266WebServer server(80); // Create a web server on port 80
+
+TinyGPSPlus gps;
+SoftwareSerial ss(D3, D2); // Set these to your RX and TX pins
+
+unsigned long vreme = millis();
+unsigned long update = millis();
+
+void setup()
+{
+  Serial.begin(115200);
+  ss.begin(9600);
+  initFS();
+  readConfig();
+  Serial.println(uid);
+  Serial.println(name);
+
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  delay(1000);
+
+  // Connect to WiFi
+  Serial.println();
+  Serial.println();
+  Serial.print("Connecting to: ");
+  Serial.println(ssid);
+  Serial.println(pass);
+  WiFi.begin(ssid, pass);
+
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print("-");
+  }
+
+  Serial.println("");
+  Serial.println("WiFi Connected");
+  updateData();
+  tone(buzzer, NOTE_C6, 100);
+  // Print the IP address
+  Serial.print("IP Address: ");
+  Serial.print("http://");
+  Serial.print(WiFi.localIP());
+  Serial.println("/");
+
+  // Define routes
+  server.on("/", HTTP_GET, []()
+            {
+              String htmlContent;
+              htmlContent += "<!DOCTYPE html>\n";
+              htmlContent += "<html>\n";
+              htmlContent += "<head>\n";
+              htmlContent += "<title>ESP8266 Web Server</title>\n";
+              htmlContent += "<style>\n";
+              htmlContent += "body { font-family: Arial, sans-serif; background-color: #f0f0f0; }\n";
+              htmlContent += "h1 { color: #333; }\n";
+              htmlContent += "form { margin-top: 20px; }\n";
+              htmlContent += "label { display: block; margin-bottom: 5px; }\n";
+              htmlContent += "input[type='text'] { padding: 5px; width: 200px; }\n";
+              htmlContent += "input[type='submit'] { padding: 8px 15px; background-color: #4CAF50; color: white; border: none; cursor: pointer; }\n";
+              htmlContent += "input[type='submit']:hover { background-color: #45a049; }\n";
+              htmlContent += "button { padding: 8px 15px; background-color: #008CBA; color: white; border: none; cursor: pointer; }\n";
+              htmlContent += "button:hover { background-color: #007B9F; }\n";
+              htmlContent += "</style>\n";
+              htmlContent += "</head>\n";
+              htmlContent += "<body>\n";
+              htmlContent += "<h1>Unesite podatke!</h1>\n";
+              htmlContent += "<form method=\"post\" action=\"/login\">\n";
+              htmlContent += "<label for='uid'>Vas user ID:</label>\n";
+              htmlContent += "<input type='text' id='uid' name='uid' value='";
+              htmlContent += uid;
+              htmlContent += "' required>\n";
+              htmlContent += "<label for='name'>Zeljeno ime uredjaja:</label>\n";
+              htmlContent += "<input type='text' id='name' name='name' value='";
+              htmlContent += name;
+              htmlContent += "' required>\n";
+              htmlContent += "<label for='ssid'>Ime mreze na koju zelite da se uredjaj povezuje:</label>\n";
+              htmlContent += "<input type='text' id='ssid' name='ssid' value='";
+              htmlContent += ssid;
+              htmlContent += "' required>\n";
+              htmlContent += "<label for='pass'>Sifra mreze:</label>\n";
+              htmlContent += "<input type='text' id='pass' name='pass' value='";
+              htmlContent += pass;
+              htmlContent += "' required>\n";
+              htmlContent += "<input type=\"submit\" value=\"Submit\">\n";
+              htmlContent += "</form>\n";
+              htmlContent += "</body>\n";
+              htmlContent += "</html>\n";
+              server.send(200, "text/html", htmlContent); // Send the response to the client
+            });
+
+  server.on("/login", HTTP_POST, []()
+            {
+    if (server.hasArg("uid")&&server.hasArg("name")&&server.hasArg("ssid")&&server.hasArg("pass")) {
+      if(!name.equals("") && !name.equals(server.arg("name"))){
+        String lat = firebase.getString(uid+"/"+name+"/lat");
+        firebase.setString(uid+"/"+server.arg("name")+"/lat", lat);
+        firebase.setString(uid+"/"+server.arg("name")+"/pocLat", String(pocetnaTackaLat,4));
+        String lng = firebase.getString(uid+"/"+name+"/lng");
+        firebase.setString(uid+"/"+server.arg("name")+"/lng", lng);
+        firebase.setString(uid+"/"+server.arg("name")+"/pocLng", String(pocetnaTackaLng,4));
+        firebase.setString(uid+"/"+server.arg("name")+"/radius", String(radius));
+        firebase.deleteData(uid+"/"+name);
+      }
+      uid = server.arg("uid");
+      name = server.arg("name");
+      ssid = server.arg("ssid");
+      pass = server.arg("pass");
+      writeConfig(uid, name, ssid, pass);
+      server.send(200, "text/plain", "Uspesno podeseni podaci!");
+    } else {
+      server.send(400, "text/plain", "Greska!");
+    } });
+
+  server.begin();
+}
+
+void loop()
+{
+  if (millis() - update > 120000)
+  {
+    update = millis();
+    Serial.println("Getting new data...");
+    updateData();
+  }
+  // Check WiFi connection and GPS status every 10 seconds
+  if (millis() - vreme > 10000)
+  {
+    vreme = millis();
+    if (WiFi.status() != WL_CONNECTED)
+    {
+      // WiFi is not connected, attempt to reconnect
+      Serial.println("WiFi disconnected, reconnecting...");
+      WiFi.begin(ssid, pass);
+      while (WiFi.status() != WL_CONNECTED)
+      {
+        delay(500);
+        Serial.print(".");
+      }
+      if (WiFi.status() == WL_CONNECTED)
+      {
+        Serial.println("\nWiFi reconnected");
+        Serial.print("IP Address: ");
+        Serial.println(WiFi.localIP());
+      }
+      else
+      {
+        Serial.println("\nWiFi reconnect failed");
+      }
+    }
+    else if (!gps.location.isValid())
+    {
+      Serial.println("No GPS detected: check wiring.");
+    }
+  }
+
+  server.handleClient(); // webserver usluga
+
+  while (ss.available() > 0 && LittleFS.exists("/config.txt"))
+  {
+    if (Serial.available())
+      Serial.print(ss.read());
+    if (gps.encode(ss.read()))
+    {
+      if (gps.location.isValid())
+      {
+        // Print the GPS data to the Serial Monitor
+        Serial.print("Latitude: ");
+        Serial.println(gps.location.lat(), 6); // Print latitude with 6 decimal places
+        Serial.print("Longitude: ");
+        Serial.println(gps.location.lng(), 6); // Print longitude with 6 decimal places
+
+        // Create a String object for latitude
+        String lat = String(gps.location.lat(),4);
+
+        // Create a String object for longitude
+        String lng = String(gps.location.lng(),4);
+
+        firebase.setString(uid + "/" + name + "/lat", lat);
+        firebase.setString(uid + "/" + name + "/lng", lng);
+
+        if (razlikaVecaOdRadiusa(gps.location.lat(), gps.location.lng(), pocetnaTackaLat, pocetnaTackaLng, radius))
+        {
+          Serial.println("Van radiusa!");
+          tone(buzzer, NOTE_AS1, 5000);
+        }
+      }
+    }
+  }
+}

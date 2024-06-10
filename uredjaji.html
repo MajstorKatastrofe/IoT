@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Add device</title>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            margin: 20px;
+            background-color: #ccf5ff; /* light blue background */
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            width: 300px;
+            background-color: #fff; /* white form background */
+            padding: 20px;
+            border-radius: 20px; /* rounded edges */
+            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.2); /* subtle shadow */
+        }
+
+        h3, h4, h2 {
+            color: #ed2b2b; /* red text color */
+        }
+        h2 {
+            margin-top: 0px;
+            text-align: center; /* center h2 text */
+        }
+
+        label {
+            margin-bottom: 10px;
+            font-size: 18px; /* slightly larger font size */
+            color: #6633ff; /* purple text color */
+        }
+
+        input {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 2px solid #ffb3b3; /* light red border */
+            border-radius: 10px; /* rounded edges */
+            font-size: 18px; /* slightly larger font size */
+            color: #ff3333; /* red text color */
+        }
+
+        button {
+            padding: 12px;
+            background-color: #ff3333; /* red button */
+            color: #fff; /* white text color */
+            border: none;
+            border-radius: 10px; /* rounded edges */
+            cursor: pointer;
+            font-size: 18px; /* slightly larger font size */
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #ff7f7f; /* darker red on hover */
+        }
+    </style>
+</head>
+
+
+<body>
+    <div id="device-links" style="margin: auto; width: 50%; border: 3px solid rgb(220, 208, 41); padding: 10px;">
+        <h3>Devices</h3>
+        <h4 id="h4">Your user ID is: </h4>
+        <!-- Links will be dynamically added here -->
+    </div>
+
+    <h2 style="margin: auto; width: 50%; padding: 10px;">Adding a new pet to the family? </h2>
+    <h2>Add a new device:</h2>
+    <form id="location-form" style="margin: auto; width: 50%; border: 3px solid green; padding: 10px;">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" required>
+
+        <label for="latitude">Border latitude</label>
+        <input type="text" id="latitude" name="latitude" required>
+
+        <label for="longitude">Border longitude</label>
+        <input type="text" id="longitude" name="longitude" required>
+
+        <label for="radius">Border radius (meters)</label>
+        <input type="number" id="radius" name="radius" required>
+
+        <button type="submit">Submit</button>
+    </form>
+
+    <script>
+        var podaci
+        var user
+
+        function fillDevices() {
+            // Fetch device data from your server or API
+            // Here, we use a dummy device list for demonstration purposes
+            const devices = podaci[user];
+            console.log(devices)
+
+            const deviceLinksContainer = document.getElementById('device-links');
+            Object.keys(devices).forEach(device => {
+                const link = document.createElement('a');
+                const br = document.createElement('br')
+                link.href = `#device-${device}`;
+                link.className = 'device-link';
+                link.innerText = device;
+                link.addEventListener('click', function () {
+                    handleDeviceClick(device);
+                });
+                deviceLinksContainer.appendChild(link);
+                deviceLinksContainer.appendChild(br)
+            });
+        }
+
+        function handleDeviceClick(deviceId) {
+            window.location.href = `/uredjaj.html?id=${deviceId}`
+        }
+
+
+        document.addEventListener("DOMContentLoaded", (event) => {
+            fetch('/data')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    return response.json()
+                })
+                .then(data => {
+                    console.log(data)
+                    podaci = data
+                    fetch('/currentuser')
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok ' + response.statusText);
+                            }
+                            return response.json()
+                        })
+                        .then(data => {
+                            console.log(data)
+                            this.user = data
+                            document.getElementById("h4").innerHTML += data
+                            fillDevices()
+                        })
+                        .catch(error => {
+                            console.error('There was a problem with the fetch operation:', error);
+                        });
+                })
+                .catch(error => {
+                    console.error('There was a problem with the fetch operation:', error);
+                });
+
+        });
+        document.getElementById('location-form').addEventListener('submit', function (event) {
+            event.preventDefault();
+            if (podaci[user] != null)
+                if (Object.hasOwn(podaci[user], document.getElementById('name').value)) {
+                    window.alert("Device with name " + document.getElementById('name').value + " already exists!")
+                    return
+                }
+            if(user == null){
+                return
+            }
+            const formData = {
+                uid: user,
+                name: document.getElementById('name').value,
+                lat: "0",
+                lng: "0",
+                pocLat: document.getElementById('latitude').value,
+                pocLng: document.getElementById('longitude').value,
+                radius: document.getElementById('radius').value
+            };
+
+            console.log(JSON.stringify(formData))
+
+            fetch('/novi-uredjaj', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        // If the response status is not OK, throw an error to be caught by the catch block
+                        return response.json().then(errorData => {
+                            // Attach additional error information from the response if available
+                            throw new Error(errorData.message || 'Network response was not ok');
+                        });
+                    }
+                    // If the response is OK, parse the response as JSON
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Success:', data);
+                    alert('Form data submitted successfully');
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    alert('Failed to submit form data');
+                });
+        });
+    </script>
+</body>
+
+</html>

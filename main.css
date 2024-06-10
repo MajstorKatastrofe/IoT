@@ -1,0 +1,118 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: #a1d6e2; /* Light blue */
+  font-family: 'Roboto', sans-serif;
+  background-image: none; /* No background image */
+}
+
+h1 {
+  margin-bottom: 3%;
+  text-align: center;
+  color: #ff4444; /* Red */
+  letter-spacing: 0.1em;
+  font-size: 35px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+h2 {
+  margin-bottom: 3%;
+  text-align: center;
+  color: #ff4444; /* Red */
+  letter-spacing: 0.1em;
+  font-size: 20px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+p {
+  margin-top: 7%;
+  margin-bottom: 3%;
+  width: 100%;
+  text-align: center;
+  border-bottom: 2px solid #ff4444; /* Red */
+  line-height: 0.1em;
+}
+
+p span {
+  background: #a1d6e2; /* Light blue */
+  padding: 0 10px;
+  
+}
+
+input {
+  margin-bottom: 3%;
+  padding: 3%;
+  width: 100%;
+  border-radius: 10px;
+  border: 2px solid #ff4444; /* Red */
+  background-color: #fff; /* White */
+  color: #333; /* Dark gray */
+}
+
+input:last-of-type {
+  margin-bottom: 0;
+}
+
+.login-container {
+  background-color: #fff; /* White */
+  padding: 5%;
+  box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.1);
+  width: 50%;
+  max-width: 1000px;
+  margin: 10% auto; /* Center vertically and horizontally */
+  border-radius: 20px;
+  text-align: center; /* Center content */
+}
+
+#submit, #create-acct-btn {
+  background-color: #ff4444; /* Red */
+  color: #fff; /* White */
+  border: none;
+  margin-top: 5%;
+  margin-right: 10px; /* Add margin between buttons */
+  padding: 3%;
+  border-radius: 10px;
+  font-weight: bold;
+  font-size: 18px;
+  letter-spacing: 0.05em;
+  width: 40%; /* Set button width */
+}
+
+#sign-up {
+  background-color: #ff4444; /* Red */
+  color: #fff; /* White */
+  border: none;
+  margin-top: 5%;
+  padding: 3%;
+  border-radius: 10px;
+  font-weight: bold;
+  font-size: 18px;
+  letter-spacing: 0.05em;
+  width: 40%; /* Set button width */
+}
+
+button:hover {
+  cursor: pointer;
+  opacity: 0.8;
+  transition: 0.3s;
+}
+
+#create-acct {
+  display: none;
+}
+
+#return-btn {
+  background: none;
+  color: #666; /* Gray */
+  text-decoration: underline;
+  border: none;
+  margin-top: 3%;
+  font-size: 16px;
+  font-weight: bold;
+}
